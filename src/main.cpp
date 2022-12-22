@@ -16,7 +16,7 @@ LightStateService lightStateService = LightStateService(&server,
 void setup() {
   // start serial and filesystem
   Serial.begin(SERIAL_BAUD_RATE);
-
+//
   // start the framework and demo project
   esp8266React.begin();
 
