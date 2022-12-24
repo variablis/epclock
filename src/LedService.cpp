@@ -5,14 +5,16 @@ int strToInt(const char* s){
     strptime(s, "%F %T", &tm);
     time_t t = mktime(&tm);
 
-    int tju = t;
-    tju -= tju % 3600;
+    int t_unix = t;
+    t_unix -= t_unix % 3600;
 
-    return tju;
+    return t_unix;
 }
 
 LedService::LedService(){
     stime1, stime2, stime3 = millis();
+
+    payload = "{\"data\":[{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4},{ \"time\":\"2030-01-01 00:00:00\",\"led\":3},{ \"time\":\"2030-01-01 00:00:00\",\"led\":2},{ \"time\":\"2030-01-01 00:00:00\",\"led\":1},{ \"time\":\"2030-01-01 00:00:00\",\"led\":5},{ \"time\":\"2030-01-01 00:00:00\",\"led\":4}]}";
 }
 
 void LedService::setup() {
@@ -21,67 +23,41 @@ void LedService::setup() {
 }
 
 void LedService::updateLeds() {
-    if (millis() - stime2 >= 6000) {
+
+    if (millis() - stime2 >= UPD_LEDS) {
 
         deserializeJson(doc, payload);
-        // grab the current instant in unix seconds
-        time_t now = time(nullptr);
 
-        // char time_string[25];
-        // strftime(time_string, 25, "%F %T", localtime(&now));
-        // Serial.print("time now: ");
-        // Serial.println(String(time_string));
-
-        // mktime Convert tm structure to time_t
-        time_t t = mktime(localtime(&now));
-        // int tnu = now;
-        int tnu = t;
-        tnu -= tnu % 3600; // remove minutes, seconds
-
+        time_t now = time(nullptr); // grab the current instant in unix seconds
+        time_t t = mktime(localtime(&now)); // mktime Convert tm structure to time_t
+        int t_now_unix = t;
+        t_now_unix -= t_now_unix % 3600; // remove minutes, seconds
         //Serial.print("timeu now: ");
-        //Serial.println(tnu);
+        //Serial.println(t_now_unix);
 
+        int t_now_hr = localtime(&now)->tm_hour % 12;
+        // Serial.print("t_now_hr now: ");
+        // Serial.println(t_now_hr);
 
-        int tnhr = localtime(&now)->tm_hour % 12;
-        // Serial.print("hr now: ");
-        // Serial.println(tnhr);
+        int ct = 0;
 
-        int co = 0;
-        int co2 = 1;
-        int co3 = 2;
-
-        int cc = 0;
-        int hrs = 0;
-
-        for (int i=0; i<LED_COUNT; i++){
-
-            if(i>=36){
-                leds[i] = CRGB::Black;
-            }
-            
-        
+        // 2x24hr entries in json
+        for (int i=0; i<48; i++){
             const char* timestr = doc["data"][i]["time"];
-            int tju = strToInt(timestr);
+            int t_json_unix = strToInt(timestr);
 
-            // if(tnu == tju){hrs = i;}
+            if(t_json_unix == t_now_unix) ct = i;
+            leds[i] = colors[0];
+        }
 
-            if(tju >= tnu && cc <=11){
-                int val = doc["data"][i]["led"];
-                int val2 = doc["data"][i+12]["led"];
+        leds[t_now_hr*3] = CRGB::Teal;
+        
+        for (int i=0; i<12; i++){
+            int val1 = doc["data"][i+ct]["led"];
+            int val2 = doc["data"][i+ct+12]["led"];
 
-                leds[(co+tnhr*3)%36] = ledc[val];
-                leds[(co2+tnhr*3)%36] = ledc[val2];
-
-                leds[co3] = CRGB::Black;
-
-                if(cc==tnhr){leds[co3] = CRGB::Teal;}
-
-                co +=3;
-                co2 +=3;
-                co3 +=3;
-
-                cc++;
-            }
+            leds[(i*3 +1 +t_now_hr*3)%36] = colors[val1];
+            leds[(i*3 +2 +t_now_hr*3)%36] = colors[val2];
         }
 
         FastLED.show(); // turn led on
@@ -92,15 +68,17 @@ void LedService::updateLeds() {
 
 void LedService::getJson() {
 
-	if (millis() - stime3 >= 60000) {
-        // wait for WiFi connection
+	if (millis() - stime3 >= UPD_JSON) {
+
         if (WiFi.isConnected()) {
             //Serial.print("[HTTP] wifi ir piesledzies...\n");
         
             HTTPClient http;
+            //WiFiClient client; // 8266
             Serial.print("[HTTP] begin...\n");
             // configure traged server and url
             http.begin("http://172.104.138.226/ep/data.json"); //HTTP
+            //http.begin(client, "http://172.104.138.226/ep/data.json"); //8266
             Serial.print("[HTTP] GET...\n");
             // start connection and send HTTP header
             int httpCode = http.GET();
@@ -117,10 +95,7 @@ void LedService::getJson() {
                 Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
             }
             http.end();
-
         }
-
 		stime3 = millis();  // reset the timer
 	}
 }
-
